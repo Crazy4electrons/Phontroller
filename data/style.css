@@ -1,0 +1,244 @@
+html {
+  font-family: Helvetica;
+  display: inline-block;
+  margin: 0px auto;
+  text-align: center;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-content: center;
+  justify-content: space-around;
+  align-items: center;
+  width: 100%;
+  margin: 0px;
+  height: 100%;
+}
+
+svg {
+  width: min-content;
+  height: min-content;
+}
+
+h1 {
+  color: #0F3376;
+  /* padding: 2vh; */
+  height: 10%;
+}
+
+#infoBox {
+  display: flex;
+  width: 100%;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-content: center;
+  justify-content: space-evenly;
+  align-items: center;
+  /* margin: 1em; */
+  height: 35%;
+}
+
+#ObstacleDetected {
+  display: flex;
+  width: auto;
+  height: 30%;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+  position: absolute;
+  background: red;
+  top: 3em;
+  /* color: white; */
+  box-shadow: 0px 0 20px 6px black;
+}
+
+
+.CircleBtn {
+  border-radius: 3em;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+  border: none;
+  background-color: var(--displayColor, red);
+  box-shadow: 0px 0px 4px 0px black;
+  margin: 1em;
+  padding: 1em;
+}
+
+.BlockBtn {
+  border-radius: 1em;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+  border: none;
+  background-color: var(--displayColor, grey);
+  box-shadow: 0px 0px 8px 2px black;
+  margin: 0.5em;
+  padding: 1em;
+  width: 100%;
+  height: 150px;
+}
+
+.button {
+  transition: all 0.2s ease;
+  /* max-width: 100px; */
+  max-height: 100px;
+}
+
+.button.active {
+  transform: scale(0.98);
+  box-shadow: none;
+}
+
+.DisplayInfo {
+  background-color: var(--displayColor, red);
+  padding: 0.5em;
+  border-radius: 1em;
+  color: white;
+  margin: 0.1em;
+}
+
+.container {
+  display: flex;
+  width: 100%;
+  height: 35%;
+  flex-direction: row;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+
+
+.moveButtonContainer {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-content: center;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.moveButtons {
+  display: flex;
+  flex-direction: row;
+  align-content: flex-start;
+  justify-content: space-around;
+  width: 100%;
+  align-items: center;
+}
+
+
+
+.speedSet {
+  width: 75px;
+  height: 50px;
+}
+
+.speedSet::-webkit-inner-spin-button,
+.speedSet::-webkit-outer-spin-button {
+  /* -webkit-appearance: none; */
+  width: 50px;
+  height: 40px;
+  margin: 2px 0;
+  padding: 0;
+}
+
+#steering-wheel {
+  width: 50%;
+  height: 50%;
+  border-radius: 50%;
+  rotate: 0deg;
+  transform: rotate(var(--rotateAngle, 0deg));
+  position: relative;
+  overflow: hidden;
+  cursor: grab;
+}
+
+#steering-wheel:active {
+  cursor: grab;
+}
+#backMotorSpeedSet{
+  rotate: -90deg;
+  cursor: grab;
+  -webkit-appearance: none;
+  appearance: none; 
+  outline: none;
+  box-shadow: none;
+  height: 50%;
+  width: 50%;
+  margin: 7em;
+}
+
+#backMotorSpeedSet::-webkit-slider-thumb{
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  background: yellow;
+  cursor: pointer;
+  transform: translateY(5px);
+  border-radius: 50%;
+  appearance: none;
+}
+
+#backMotorSpeedSet::-moz-range-thumb {
+  width: 25px;
+  height: 25px;
+  background: yellow;
+  cursor: pointer;
+   transform: translateY(-5px);
+}
+
+#backMotorSpeedSet::-ms-thumb {
+  width: 15px;
+  height: 15px;
+  background: yellow;
+  cursor: pointer;
+   transform: translateY(-5px);
+}
+
+#backMotorSpeedSet::-webkit-slider-runnable-track {
+  /* box-shadow: none; */
+  /* outline: none; */
+  height:  30px;
+  appearance: none;
+  /* border: none; */
+  box-shadow: inset 0px 0px 6px 5px white;
+  background:  linear-gradient(185deg, transparent 70%, white 70%,white 100%), linear-gradient(-5deg, transparent 70%, white 70%,white 100%),linear-gradient(90deg,green, blue, red);
+}
+
+#backMotorSpeedSet::-moz-range-track {
+  height:  15px;
+  background:  linear-gradient(90deg,blue,green);
+}
+
+#backMotorSpeedSet::-ms-track {
+  height:  15px;
+  background:  linear-gradient(90deg,blue,green);
+  border-color: transparent;
+  color: transparent;
+}
+
+.ToggleBtn {
+  color: #0F3376;
+}
+.ToggleBtn .active {
+  color: #010d24;
+}
+
+.noDisplay {
+  display: none;
+}
