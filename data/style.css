@@ -1,20 +1,21 @@
-html {
+* {
   font-family: Helvetica;
-  display: inline-block;
+  /* display: inline-block; */
   margin: 0px auto;
   text-align: center;
 }
 
 body {
-  display: flex;
+  /* display: flex; */
   flex-direction: column;
   flex-wrap: nowrap;
   align-content: center;
   justify-content: space-around;
   align-items: center;
-  width: 100%;
   margin: 0px;
-  height: 100%;
+  height: var(--displayHeight, 100%);
+  width: var(--displayWidth, 100%);
+  background: radial-gradient(violet, aqua);
 }
 
 svg {
@@ -23,9 +24,9 @@ svg {
 }
 
 h1 {
-  color: #0F3376;
+  color: grey;
   /* padding: 2vh; */
-  height: 10%;
+  height: 15%;
 }
 
 #infoBox {
@@ -34,16 +35,16 @@ h1 {
   flex-direction: row;
   flex-wrap: nowrap;
   align-content: center;
-  justify-content: space-evenly;
+  justify-content: center;
   align-items: center;
   /* margin: 1em; */
-  height: 35%;
+  height: 15%;
 }
 
 #ObstacleDetected {
   display: flex;
-  width: auto;
-  height: 30%;
+  width: 50%;
+  height: 50%;
   flex-direction: column;
   flex-wrap: nowrap;
   align-content: center;
@@ -51,7 +52,9 @@ h1 {
   align-items: center;
   position: absolute;
   background: red;
-  top: 3em;
+  top: 25%;
+  left: 25%;
+  text-align: center;
   /* color: white; */
   box-shadow: 0px 0 20px 6px black;
 }
@@ -68,8 +71,10 @@ h1 {
   border: none;
   background-color: var(--displayColor, red);
   box-shadow: 0px 0px 4px 0px black;
-  margin: 1em;
+  height: 85%;
   padding: 1em;
+  width: 25%;
+
 }
 
 .BlockBtn {
@@ -86,13 +91,15 @@ h1 {
   margin: 0.5em;
   padding: 1em;
   width: 100%;
-  height: 150px;
+  height: 100%;
+  background: linear-gradient(45deg, black, transparent, blue);
 }
 
 .button {
   transition: all 0.2s ease;
+  color: aqua;
   /* max-width: 100px; */
-  max-height: 100px;
+  /* max-height: 100px; */
 }
 
 .button.active {
@@ -101,17 +108,17 @@ h1 {
 }
 
 .DisplayInfo {
-  background-color: var(--displayColor, red);
+  background-color: #c93737;
   padding: 0.5em;
   border-radius: 1em;
-  color: white;
+  color: aqua;
   margin: 0.1em;
 }
 
 .container {
   display: flex;
   width: 100%;
-  height: 35%;
+  height: 60%;
   flex-direction: row;
   align-content: center;
   justify-content: center;
@@ -128,37 +135,33 @@ h1 {
   align-content: center;
   align-items: center;
   justify-content: center;
-  width: 100%;
+  width: 35%;
+  height: 100%;
 }
 
-.moveButtons {
+#backMotorSpeedSetButton {
+  height: 50%;
+  width: 50%;
+}
+
+.extraButtons {
   display: flex;
   flex-direction: row;
   align-content: flex-start;
-  justify-content: space-around;
-  width: 100%;
+  justify-content: space-between;
+  width: 30%;
   align-items: center;
 }
 
-
-
-.speedSet {
-  width: 75px;
-  height: 50px;
-}
-
-.speedSet::-webkit-inner-spin-button,
-.speedSet::-webkit-outer-spin-button {
-  /* -webkit-appearance: none; */
-  width: 50px;
-  height: 40px;
-  margin: 2px 0;
-  padding: 0;
+.ToggleBtn {
+  border: none;
+  box-shadow: 0px 0px 11px 3px black;
+  background: linear-gradient(132deg, rgb(131 119 119 / 62%), blue);
 }
 
 #steering-wheel {
-  width: 50%;
-  height: 50%;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
   rotate: 0deg;
   transform: rotate(var(--rotateAngle, 0deg));
@@ -170,71 +173,85 @@ h1 {
 #steering-wheel:active {
   cursor: grab;
 }
-#backMotorSpeedSet{
-  rotate: -90deg;
-  cursor: grab;
+
+#backMotorSpeedSet {
+  transform: rotate(-90deg);
+  background: transparent;
   -webkit-appearance: none;
-  appearance: none; 
+  appearance: none;
   outline: none;
   box-shadow: none;
   height: 50%;
-  width: 50%;
-  margin: 7em;
+  /* width: 50%; */
 }
 
-#backMotorSpeedSet::-webkit-slider-thumb{
+#backMotorSpeedSet::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 45px;
+  background: yellow;
+  transform: translateY(-7.5px);
+  border-radius: 25%;
+  appearance: none;
+}
+
+#backMotorSpeedSet::-moz-range-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 20px;
   height: 20px;
   background: yellow;
-  cursor: pointer;
   transform: translateY(5px);
   border-radius: 50%;
   appearance: none;
 }
 
-#backMotorSpeedSet::-moz-range-thumb {
-  width: 25px;
-  height: 25px;
-  background: yellow;
-  cursor: pointer;
-   transform: translateY(-5px);
-}
-
 #backMotorSpeedSet::-ms-thumb {
-  width: 15px;
-  height: 15px;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
   background: yellow;
-  cursor: pointer;
-   transform: translateY(-5px);
+  transform: translateY(5px);
+  border-radius: 50%;
+  appearance: none;
 }
 
 #backMotorSpeedSet::-webkit-slider-runnable-track {
-  /* box-shadow: none; */
-  /* outline: none; */
-  height:  30px;
+  height: 30px;
   appearance: none;
-  /* border: none; */
-  box-shadow: inset 0px 0px 6px 5px white;
-  background:  linear-gradient(185deg, transparent 70%, white 70%,white 100%), linear-gradient(-5deg, transparent 70%, white 70%,white 100%),linear-gradient(90deg,green, blue, red);
+  box-shadow: inset 0px 0px 6px 5px transparent;
+  background: linear-gradient(90deg, green, blue, red);
 }
 
 #backMotorSpeedSet::-moz-range-track {
-  height:  15px;
-  background:  linear-gradient(90deg,blue,green);
+  height: 30px;
+  appearance: none;
+
+  background: linear-gradient(90deg, green, blue, red);
 }
 
 #backMotorSpeedSet::-ms-track {
-  height:  15px;
-  background:  linear-gradient(90deg,blue,green);
-  border-color: transparent;
-  color: transparent;
+  height: 30px;
+  appearance: none;
+  box-shadow: inset 0px 0px 6px 5px transparent;
+  background: linear-gradient(90deg, green, blue, red);
+}
+
+.backMotorSpeedSetContainer {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
 }
 
 .ToggleBtn {
   color: #0F3376;
 }
+
 .ToggleBtn .active {
   color: #010d24;
 }

@@ -105,6 +105,7 @@ void BackMotor(int direction = 2) {
 
 //the following functions is used to turn a the car
 void frontMotor(int direction = 90) {
+    Serial.println(direction);
     myServo.write(direction);
 }
 
@@ -175,22 +176,13 @@ bool frontMotorTurned = false;
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length) {
     clientId = num;
     String command = String((char*)payload);
-    Serial.println(command);
     if(type == WStype_DISCONNECTED) {
-        Serial.printf("[%u] Disconnected!\n", num);
     } else if(type == WStype_CONNECTED) {
         IPAddress ip = webSocket.remoteIP(num);
-        Serial.printf("[%u] Connected from %d.%d.%d.%d\n", num, ip[0], ip[1], ip[2], ip[3]);
-        // Send a welcome message to the newly connected client
     } else if(type ==  WStype_TEXT) {
-
-
-        Serial.print("command received:");
-        Serial.println(command);
 
         if(command == "enginestart") {//engine start
             EngineStart();
-            Serial.println("engine Start");
         } else if(command.charAt(0) == 'F') {
             (engineStart) ? frontMotor(command.substring(1).toInt()) : frontMotor(90);
 
@@ -201,14 +193,18 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         } else if(command == "right") {
             (engineStart) ? frontMotor(180): frontMotor(90);
         } else if(command.charAt(0) == 'B') {
-            if(command.substring(1).toInt() >= 0 && command.substring(1).toInt() <= 50) {
+            if(command.substring(1).toInt()> 0 && command.substring(1).toInt() < 50) {
                 BackMotor(1);
-                backMotorSpeed = map(command.substring(1).toInt(), 0, 50, 255, 0);
-            } else if(command.substring(1).toInt() >= 51 && command.substring(1).toInt() <= 100) {
+                backMotorSpeed = map(constrain(command.substring(1).toInt(),0,50), 0, 50, 0,255);
+            } else if(command.substring(1).toInt() > 50 && command.substring(1).toInt() < 100) {
                 BackMotor(0);
-                backMotorSpeed = map(command.substring(1).toInt(), 51, 100, 255, 0);
+                backMotorSpeed = map(constrain(command.substring(1).toInt(),50,100), 50, 100, 255, 0);
 
             };
+            Serial.print("command:");
+            Serial.println(command);
+            Serial.print("backMotorSpeed:");
+            Serial.println(backMotorSpeed);
             analogWrite(MotorAEnable, backMotorSpeed);
         } else if(command == "stopAcc") {
             BackMotor(2);
@@ -244,7 +240,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 
 
     } else if(type == WStype_BIN) {
-        Serial.printf("[%u] Received binary data\n", num);
     }
     if(!engineStart) {//if engine is off stop all motors
         stopMotors();
@@ -263,16 +258,12 @@ void setup() {
 
     // Get the IP address of the AP
     IPAddress IP = WiFi.softAPIP();
-    Serial.print("Access Point started. IP address: ");
-    Serial.println(IP);
 
     if (!LittleFS.begin()) {
-        Serial.println("Failed to mount LittleFS");
         return;
     }
     // Check if index.html exists
     if (!LittleFS.exists("/index.html")) {
-        Serial.println("index.html not found in LittleFS");
         return;
     }
 
@@ -286,12 +277,11 @@ void setup() {
     });
 
     server.begin();
-    Serial.println("HTTP server started");
 
     // Start WebSocket server
     webSocket.begin();
     webSocket.onEvent(webSocketEvent);
-    Serial.println("WebSocket server started");
+
     // Initialize motor pins
     pinMode(MotorA1, OUTPUT);
     pinMode(MotorA2, OUTPUT);
@@ -314,15 +304,14 @@ void setup() {
     // }
     
     //irSensor setup
-    pinMode(IRSense, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(IRSense), [] {
-        stopIr = 1;
-        BackMotor(3);
-        Serial.println("Obstacle detected");
-    }, FALLING);
+    // pinMode(IRSense, INPUT_PULLUP);
+    // attachInterrupt(digitalPinToInterrupt(IRSense), [] {
+    //     stopIr = 1;
+    //     BackMotor(3);
+    // }, FALLING);
 
     delay(500);
-    Serial.println("done initializing");
+Serial.println("done initializing");
 
 }
 void loop() {
@@ -342,8 +331,5 @@ void loop() {
 
         // Send the message to all connected clients
         webSocket.broadcastTXT(message);
-        Serial.println("Data sent: " + message);
-        Serial.printf("Battery level: %u", analogRead(BatteryPin));
-        Serial.printf("Desired Position: %u", desiredPosition);
     }
 }
