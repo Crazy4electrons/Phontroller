@@ -14,7 +14,7 @@ WebSocketsServer webSocket(81);
 #define BatteryPin A0
 #define Servo D2
 #define MotorAEnable D3
-#define EchPin D4
+#define EchoPin D4
 #define FrontLights D5
 #define MotorA1 D6
 #define MotorA2 D7
@@ -32,6 +32,17 @@ int stopIr = 0;
 const float R1 = 10000.0; // 10k ohms
 const float R2 = 15000.0; // 15k ohms
 
+long readUltrasonicDistance() {
+    digitalWrite(TrigPin, LOW);
+    delayMicroseconds(2);
+    digitalWrite(TrigPin, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(TrigPin, LOW);
+    
+    long duration = pulseIn(EchoPin, HIGH);
+    long distance = duration * 0.034 / 2; // Convert to distance in cm
+    return distance;
+}
 
 float readBatteryLevel() {
     int sensorValue = analogRead(A0);
@@ -44,9 +55,9 @@ float readBatteryLevel() {
 bool motorLights = false;
 int previourBackMotorDirection ;
 void BackMotor(int direction = 2) {
-    previourBackMotorDirection = direction;
     switch(direction) {
-    case 0://forwards
+        case 0://forwards
+        previourBackMotorDirection = direction;
         if(motorLights) {
             digitalWrite(FrontLights, HIGH);
             digitalWrite(BackLights, LOW);
@@ -55,7 +66,8 @@ void BackMotor(int direction = 2) {
         digitalWrite(MotorA2, LOW);
         (stopIr) ? stopIr = 0 : stopIr = 0;
         break;
-    case 1://reverse
+        case 1://reverse
+        previourBackMotorDirection = direction;
         if(motorLights) {
             digitalWrite(FrontLights, LOW);
             digitalWrite(BackLights, HIGH);
@@ -112,7 +124,7 @@ void frontMotor(int direction = 90) {
 
 //stop all motors
 void stopMotors() {
-    BackMotor(2);
+    BackMotor(3);
     frontMotor(90);
 }
 
@@ -180,7 +192,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
     } else if(type == WStype_CONNECTED) {
         IPAddress ip = webSocket.remoteIP(num);
     } else if(type ==  WStype_TEXT) {
-
         if(command == "enginestart") {//engine start
             EngineStart();
         } else if(command.charAt(0) == 'F') {
@@ -199,24 +210,19 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
             } else if(command.substring(1).toInt() > 50 && command.substring(1).toInt() < 100) {
                 BackMotor(0);
                 backMotorSpeed = map(constrain(command.substring(1).toInt(),50,100), 50, 100, 255, 0);
-
             };
-            Serial.print("command:");
-            Serial.println(command);
-            Serial.print("backMotorSpeed:");
-            Serial.println(backMotorSpeed);
             analogWrite(MotorAEnable, backMotorSpeed);
         } else if(command == "stopAcc") {
-            BackMotor(2);
+            BackMotor(3);
         } else if (command == "forward") {//forward
             if(engineStart) {
                 BackMotor(0);
-                analogWrite(MotorAEnable, 0);
+                analogWrite(MotorAEnable, backMotorSpeed);
             }
         } else if (command == "backward") {//backward
             if(engineStart) {
                 BackMotor(1);
-                analogWrite(MotorAEnable, 0);
+                analogWrite(MotorAEnable, backMotorSpeed);
             }
 
         } else if(command == "L0") {//lights off
@@ -304,11 +310,9 @@ void setup() {
     // }
     
     //irSensor setup
-    // pinMode(IRSense, INPUT_PULLUP);
-    // attachInterrupt(digitalPinToInterrupt(IRSense), [] {
-    //     stopIr = 1;
-    //     BackMotor(3);
-    // }, FALLING);
+    pinMode(TrigPin, OUTPUT);
+    pinMode(EchoPin, INPUT);
+
 
     delay(500);
 Serial.println("done initializing");
@@ -320,7 +324,15 @@ void loop() {
 
     // Get the current time
     unsigned long currentMillis = millis();
-
+    long distance = readUltrasonicDistance();
+    Serial.print("Distance: ");
+    Serial.print(distance);
+    Serial.println(" cm");
+    // Use the distance data as needed
+    if (distance < 10) {
+        // Example: Stop the motors if an obstacle is detected within 10 cm
+        stopMotors();
+    }
     // Check if the interval has passed
     if (currentMillis - previousMillis >= interval) {
         // Save the last time data was sent
