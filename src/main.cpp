@@ -5,6 +5,36 @@
 #include <LittleFS.h>
 #include <Servo.h>
 
+class CarDetail {
+    public:
+      int LightsMode;
+      int engineStarted;
+      int BatteryStatus;
+      int BackObstacleDetected;
+      int FrontObstacleDetected;
+      String log; // Add log member
+  
+      // Method to display car details
+      String getDetails() {
+          String message = "{";
+          message += "\"LightsStatus\":" + String(LightsMode) + ",";
+          message += "\"EngineStatus\":" + String(engineStarted) + ",";
+          message += "\"BackObstacleDetected\":" + String(BackObstacleDetected) + ",";
+          message += "\"FrontObstacleDetected\":" + String(FrontObstacleDetected) + ",";
+          message += "\"BatteryStatus\":" + String(BatteryStatus) + ",";
+          message += "\"Log\":\"" + log + "\""; // Include log in the message
+          message += "}";
+          return message;
+      }
+  };
+  CarDetail MyCar;
+
+  String LogMessages;
+  String addToLog(String message) {
+    LogMessages += message; // Append to log
+    return MyCar.log;
+  }
+
 Servo myServo;
 const char* ssid = "Car_AP";
 const char* password = "knjokies"; // Minimum 8 characters
@@ -18,7 +48,7 @@ WebSocketsServer webSocket(81);
 #define FrontLights D5
 #define MotorA1 D6
 #define MotorA2 D7
-#define IRSense D8
+#define IRSense D1
 #define BackLights D9
 #define TrigPin D10
 unsigned long previousMillis = 0;  // Stores the last time the action was performed
@@ -26,7 +56,8 @@ unsigned long previousMillis2 = 0;  // Stores the last time the action was perfo
 const long interval = 500;        // Interval at which to perform the action (in milliseconds)
 int desiredPosition = 90;
 int backMotorSpeed = 255;
-int stopIr = 0;
+int IrValue = 0;
+long SenseDistance = 100;
 
 // Define the resistor values
 const float R1 = 10000.0; // 10k ohms
@@ -62,9 +93,10 @@ void BackMotor(int direction = 2) {
             digitalWrite(FrontLights, HIGH);
             digitalWrite(BackLights, LOW);
         }
-        digitalWrite(MotorA1, HIGH);
-        digitalWrite(MotorA2, LOW);
-        (stopIr) ? stopIr = 0 : stopIr = 0;
+        if(SenseDistance >10){
+            digitalWrite(MotorA1, HIGH);
+            digitalWrite(MotorA2, LOW);
+        }
         break;
         case 1://reverse
         previourBackMotorDirection = direction;
@@ -72,7 +104,7 @@ void BackMotor(int direction = 2) {
             digitalWrite(FrontLights, LOW);
             digitalWrite(BackLights, HIGH);
         }
-        if(!stopIr) {
+        if(!IrValue) {
             digitalWrite(MotorA1, LOW);
             digitalWrite(MotorA2, HIGH);
         } 
@@ -89,23 +121,24 @@ void BackMotor(int direction = 2) {
         if(previourBackMotorDirection == 0) {
             digitalWrite(MotorA1, LOW);
             digitalWrite(MotorA2, HIGH);
-            delay(200);
-            digitalWrite(MotorA1, LOW);
+            delay(100);
+            digitalWrite(MotorA2, LOW);
         } else if(previourBackMotorDirection == 1) {
-
             digitalWrite(MotorA1, HIGH);
             digitalWrite(MotorA2, LOW);
-            delay(200);
-            digitalWrite(MotorA2, LOW);
+            delay(100);
+            digitalWrite(MotorA1, LOW);
         } else {
             digitalWrite(MotorA1, HIGH);
             digitalWrite(MotorA2, HIGH);
         }
+        previourBackMotorDirection = 2;
         if(motorLights) {
             digitalWrite(FrontLights, LOW);
         }
         digitalWrite(BackLights, HIGH);
         delay(200);
+        digitalWrite(BackLights, LOW);
         digitalWrite(MotorA1, LOW);
         digitalWrite(MotorA2, LOW);
 
@@ -117,14 +150,14 @@ void BackMotor(int direction = 2) {
 
 //the following functions is used to turn a the car
 void frontMotor(int direction = 90) {
-    Serial.println(direction);
+     // Append to log
     myServo.write(direction);
 }
 
 
 //stop all motors
 void stopMotors() {
-    BackMotor(3);
+    BackMotor(2);
     frontMotor(90);
 }
 
@@ -154,32 +187,9 @@ void turnLightsOn(int mode) {
 int engineStart = 0;
 void EngineStart() {
     engineStart = !engineStart;
+    MyCar.engineStarted = engineStart;
 }
 
-class CarDetail {
-  public:
-    int LightsMode;
-    int engineStarted;
-    int BatteryStatus;
-    int ObstacleDetected;
-
-    // Method to display car details
-    String getDetails() {
-        ObstacleDetected = stopIr;
-        BatteryStatus = readBatteryLevel();
-        engineStarted = engineStart;
-
-        String message = "{";
-        message += "\"LightsStatus\":" + String(LightsMode) + ",";
-        message += "\"EngineStatus\":" + String(engineStarted) + ",";
-        message += "\"ObstacleDetected\":" + String(ObstacleDetected) + ",";
-        message += "\"BatteryStatus\":" + String(BatteryStatus);
-        message += "}";
-        return message;
-
-    }
-};
-CarDetail MyCar;
 
 int clientId;
 bool frontMotorTurned = false;
@@ -190,7 +200,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
     String command = String((char*)payload);
     if(type == WStype_DISCONNECTED) {
     } else if(type == WStype_CONNECTED) {
-        IPAddress ip = webSocket.remoteIP(num);
+        // IPAddress ip = webSocket.remoteIP(num);
     } else if(type ==  WStype_TEXT) {
         if(command == "enginestart") {//engine start
             EngineStart();
@@ -217,12 +227,12 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         } else if (command == "forward") {//forward
             if(engineStart) {
                 BackMotor(0);
-                analogWrite(MotorAEnable, backMotorSpeed);
+                analogWrite(MotorAEnable, 0);
             }
         } else if (command == "backward") {//backward
             if(engineStart) {
                 BackMotor(1);
-                analogWrite(MotorAEnable, backMotorSpeed);
+                analogWrite(MotorAEnable, 0);
             }
 
         } else if(command == "L0") {//lights off
@@ -243,8 +253,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         } else {
             webSocket.sendTXT(clientId, MyCar.getDetails().c_str());
         }
-
-
     } else if(type == WStype_BIN) {
     }
     if(!engineStart) {//if engine is off stop all motors
@@ -263,7 +271,7 @@ void setup() {
     WiFi.softAP(ssid, password);
 
     // Get the IP address of the AP
-    IPAddress IP = WiFi.softAPIP();
+    // IPAddress IP = WiFi.softAPIP();
 
     if (!LittleFS.begin()) {
         return;
@@ -299,17 +307,23 @@ void setup() {
     //lights setup
     pinMode(FrontLights, OUTPUT);
     pinMode(BackLights, OUTPUT);
-    // for(int i = 0; i <= 10; i++) {
-    //     turnLightsOn(2);
-    //     delay(200);
-    //     turnLightsOn(0);
-    //     delay(100);
-    //     turnLightsOn(2);
-    //     delay(200);
-    //     turnLightsOn(0);
-    // }
+    for(int i = 0; i <= 10; i++) {
+        turnLightsOn(2);
+        delay(200);
+        turnLightsOn(0);
+        delay(100);
+        turnLightsOn(2);
+        delay(200);
+        turnLightsOn(0);
+    }
+
+    //Battery Sense
+    pinMode(BatteryPin,INPUT);
     
     //irSensor setup
+    pinMode(IRSense,INPUT_PULLUP);
+
+    //ultrsonic Sensor
     pinMode(TrigPin, OUTPUT);
     pinMode(EchoPin, INPUT);
 
@@ -319,25 +333,24 @@ Serial.println("done initializing");
 
 }
 void loop() {
+    unsigned long currentMillis = millis();
     // Handle WebSocket events
     webSocket.loop();
-
+  // Use the distance data as needed
+ 
     // Get the current time
-    unsigned long currentMillis = millis();
-    long distance = readUltrasonicDistance();
-    Serial.print("Distance: ");
-    Serial.print(distance);
-    Serial.println(" cm");
-    // Use the distance data as needed
-    if (distance < 10) {
-        // Example: Stop the motors if an obstacle is detected within 10 cm
-        stopMotors();
-    }
+   
     // Check if the interval has passed
     if (currentMillis - previousMillis >= interval) {
         // Save the last time data was sent
         previousMillis = currentMillis;
+        SenseDistance = readUltrasonicDistance();
+        IrValue = !digitalRead(IRSense);
+        MyCar.BatteryStatus = readBatteryLevel();
 
+        MyCar.BackObstacleDetected = IrValue;
+        MyCar.FrontObstacleDetected = SenseDistance;
+        MyCar.log = LogMessages;
         // Create a JSON string with car details
         String message = MyCar.getDetails();
 

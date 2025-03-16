@@ -1,10 +1,12 @@
 const leftButton = document.getElementById('leftButton');
 const rightButton = document.getElementById('rightButton');
 const steeringWheel = document.querySelector('#steering-wheel');
-// const middleAlign = document.getElementById('middleAlign');
+const middleAlign = document.getElementById('middleAlign');
+
 
 const backMotorSpeedSet = document.getElementById('backMotorSpeedSet');
 const backMotorSpeedSetContainer = document.getElementById('backMotorSpeedSetContainer');
+const stopButton = document.getElementById('stopButton');
 
 const forwardButton = document.getElementById('forwardButton');
 const backwardButton = document.getElementById('backwardButton');
@@ -47,7 +49,7 @@ ToggleSteering.addEventListener('touchstart', (event) => {
     leftButton.classList.remove('noDisplay');
     rightButton.classList.remove('noDisplay');
     steeringWheel.classList.add('noDisplay');
-    ToggleSteering.style.background= '';
+    ToggleSteering.style.background = '';
 
   };
 });
@@ -67,13 +69,10 @@ ToggleDrive.addEventListener('touchstart', (event) => {
     backwardButton.classList.remove('noDisplay');
     forwardButton.classList.remove('noDisplay');
     backMotorSpeedSetContainer.classList.add('noDisplay');
-    ToggleDrive.style.background= '';
+    ToggleDrive.style.background = '';
 
   };
 });
-
-
-ObstacleDetected.style.display = "none";
 
 let lastSend = 0;
 let Socket = new WebSocket('ws://' + window.location.hostname + ':81/');
@@ -104,7 +103,8 @@ Socket.onmessage = function (event) {
     console.log("battery status:" + data["BatteryStatus"]);
     console.log("engine status:" + data["EngineStatus"]);
     console.log("lights status:" + data["LightsStatus"]);
-    console.log("Obstacle detected:" + data["ObstacleDetected"]);
+    console.log("Back Obstacle detected:" + data["BackObstacleDetected"]);
+    console.log("Front Obstacle detected: distance: " + data["FrontObstacleDetected"] + "cm");
     BatteryStatus.innerHTML = (data["BatteryStatus"]) ? `Battery at: ${data["BatteryStatus"]}V` : "Battery is Low";
     BatteryStatus.style.backgroundColor = (data["BatteryStatus"]) ? "#7c37c9" : "#c93737";
     // engineButton.innerHTML = (data["EngineStatus"]) ? "Engine Started" : "Engine Stopped";
@@ -120,21 +120,31 @@ Socket.onmessage = function (event) {
         lightsButton.style.setProperty('background', 'linear-gradient(blue, transparent)')
         break;
       case 2:
-        lightsButton.style.setProperty('background', 'linear-gradient(blue,green)')
+        lightsButton.style.setProperty('background', 'linear-gradient(blue,red)')
         break;
       case 3:
-        lightsButton.style.setProperty('background', 'linear-gradient(blue, transparent,green)')
+        lightsButton.style.setProperty('background', 'linear-gradient(blue, transparent,red)')
         break;
       default:
-        lightsButton.style.backgroundColor = "grey";
+        lightsButton.style.background = "";
         break;
     }
-    ObstacleDetected.style.display = (data["ObstacleDetected"]) ? "block" : "none";
+    if (data["BackObstacleDetected"] == 1 || data["FrontObstacleDetected"] < 15) {
+      console.log('inside alert '+ ObstacleDetected.classList.contains('noDisplay'));
+      if (ObstacleDetected.classList.contains('noDisplay') == true) {
+        ObstacleDetected.classList.remove('noDisplay');
+      };
+    } else {
+      console.log('outside alert '+ ObstacleDetected.classList.contains('noDisplay'));
+      if (ObstacleDetected.classList.contains('noDisplay') == false) {
+        ObstacleDetected.classList.add('noDisplay');
+      };
+    }
 
+
+    console.log("Log:" + data["log"]);
   }
 };
-
-
 
 //turning
 //comannds to send to server
@@ -210,39 +220,60 @@ function getRotation(x, y) {
 //back motor
 lastSend = 0;
 leftButton.addEventListener('touchstart', () => {
+  let now = (new Date).getTime();
+  if (lastSend > now - 20) return;
+  lastSend = now;
   Socket.send(`left`);
   leftButton.classList.add('active');
 });
 rightButton.addEventListener('touchstart', () => {
+  let now = (new Date).getTime();
+  if (lastSend > now - 20) return;
+  lastSend = now;
   Socket.send(`right`);
   rightButton.classList.add('active');
 });
 leftButton.addEventListener('touchend', () => {
+  let now = (new Date).getTime();
+  if (lastSend > now - 20) return;
+  lastSend = now;
   Socket.send(`center`);
   setTimeout(() => {
     leftButton.classList.remove('active');
   }, 200);
 });
 rightButton.addEventListener('touchend', () => {
+  let now = (new Date).getTime();
+  if (lastSend > now - 20) return;
+  lastSend = now;
   Socket.send(`center`);
   setTimeout(() => {
     rightButton.classList.remove('active');
   }, 200);
 });
 forwardButton.addEventListener('touchstart', () => {
-  // Socket.send(`forward`);
-  document.body.style.setProperty('background','linear-gradient(blue, transparent),radial-gradient(violet,aqua)');
+  let now = (new Date).getTime();
+  if (lastSend > now - 20) return;
+  lastSend = now;
+  Socket.send(`forward`);
+  document.body.style.setProperty('background', 'linear-gradient(blue, transparent),radial-gradient(violet,aqua)');
 
   forwardButton.classList.add('active');
 })
 backwardButton.addEventListener('touchstart', () => {
-  // Socket.send(`backward`);
-  document.body.style.setProperty('background','linear-gradient(transparent,red),radial-gradient(violet,aqua)');
+  let now = (new Date).getTime();
+  if (lastSend > now - 20) return;
+  lastSend = now;
+  Socket.send(`backward`);
+  document.body.style.setProperty('background', 'linear-gradient(transparent,red),radial-gradient(violet,aqua)');
   backwardButton.classList.add('active');
 })
 
 
 stopButton.addEventListener('touchstart', () => {
+  let now = (new Date).getTime();
+  if (lastSend > now - 20) return;
+  lastSend = now;
   Socket.send(`stopAcc`);
   forwardButton.classList.add('active');
 })
@@ -254,22 +285,31 @@ stopButton.addEventListener('touchend', () => {
 forwardButton.addEventListener('touchend', () => {
   setTimeout(() => {
     Socket.send(`stopAcc`);
-    document.body.style.background='';
+    document.body.style.background = '';
     forwardButton.classList.remove('active');
   }, 200);
 });
 backwardButton.addEventListener('touchend', () => {
   Socket.send(`stopAcc`);
   setTimeout(() => {
-    document.body.style.background='';
+    document.body.style.background = '';
     backwardButton.classList.remove('active');
   }, 200);
 });
 
 
-
-backMotorSpeedSet.addEventListener('input', (event) => {
-  event.preventDefault();
+let motorSpeedsetIsDragging = false;
+backMotorSpeedSet.addEventListener('touchstart', (event) => {
+  // event.preventDefault();
+  motorSpeedsetIsDragging = true;
+  Socket.send(`B${backMotorSpeedSet.value}`);
+});
+backMotorSpeedSet.addEventListener('touchmove',(event)=>{
+  Socket.send(`B${backMotorSpeedSet.value}`);
+})
+backMotorSpeedSet.addEventListener('touchend',(event)=>{
+  motorSpeedsetIsDragging = false;
+  backMotorSpeedSet.value = 50;
   Socket.send(`B${backMotorSpeedSet.value}`);
 
 });
@@ -279,7 +319,6 @@ engineButton.addEventListener('touchstart', () => {
   let now = (new Date).getTime();
   if (lastSend > now - 20) return;
   lastSend = now;
-  console.log("enginestart");
   Socket.send(`enginestart`);
 });
 
