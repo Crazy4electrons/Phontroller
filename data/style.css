@@ -1,254 +1,359 @@
+/*
+ * CSS file for styling the RC Car Control web interface.
+ * Defines layout, colors, typography, and element appearance.
+ */
+
+/* --- Variables --- */
+/* Defines reusable values for colors, spacing, etc. */
+:root {
+  /* Color palette for background gradient */
+  --body-bg-color1: rgb(9, 255, 0);
+  --body-bg-color2: rgb(0, 38, 255);
+
+  /* Button colors and shadows */
+  --button-text-color: rgb(21, 255, 0);
+  --button-active-shadow: none; /* Shadow style when a button is active/pressed */
+  --button-default-shadow: 0px 0px 8px 2px black;
+  --button-circle-shadow: 0px 0px 4px 0px black;
+  --button-toggle-shadow: 0px 0px 11px 3px black;
+
+  /* Info box colors */
+  --info-disconnected-bg: #ca1515; /* Background for disconnected or low status indicators */
+  --info-connected-bg: #54ee4e; /* Background for connected or OK status indicators */
+  --info-error-bg: red;
+  --info-text-color: rgb(255, 251, 0); /* Text color for info indicators */
+
+  /* Obstacle indicator styling */
+  --obstacle-bg: radial-gradient(transparent, red);
+  --obstacle-shadow: 0px 0 20px 6px black;
+
+  /* Speed slider styling */
+  --slider-track-bg: linear-gradient(90deg, green, blue, red); /* Gradient for the slider track */
+  --slider-thumb-bg: rgb(0, 238, 255); /* Color for the slider handle */
+
+  /* Base font stack */
+  --base-font-family: Helvetica, Arial, sans-serif;
+
+  /* Dynamic CSS variable for steering wheel rotation, controlled by JS */
+  --rotate-angle: 0deg;
+}
+
+/* --- Global Reset & Body --- */
+/* Basic reset for consistency across browsers */
 * {
-  font-family: Helvetica;
-  /* display: inline-block; */
-  margin: 0px auto;
-  text-align: center;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: var(--base-font-family);
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden; /* Prevent body scrollbars */
 }
 
 body {
-  display: flex;
-  flex-direction: column;
-  flex-wrap: nowrap;
-  align-content: center;
-  justify-content: space-around;
-  align-items: center;
-  margin: 0px;
-  height: var(--displayHeight, 100%);
-  width: var(--displayWidth, 100%);
-  position: fixed;
-  background: 0 0 / 100% var(--displayHeight,100px) radial-gradient(violet, aqua) no-repeat fixed;
+  display: flex; /* Use Flexbox for main layout */
+  flex-direction: column; /* Arrange children (header, main) vertically */
+  background: radial-gradient(var(--body-bg-color1), var(--body-bg-color2)) no-repeat fixed;
+  background-size: 100% 100%; /* Ensure background covers the viewport */
+  color: #333;
+  text-align: center;
 }
 
-svg {
-  width: min-content;
-  height: min-content;
+/* --- Utility Classes --- */
+/* Class to hide elements, often used by JS */
+.noDisplay {
+  display: none !important;
+}
+
+/* Flexbox utility class for centering content */
+.flex-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  align-content: center;
+}
+
+/* --- Header --- */
+header {
+  padding: 1vh 0; /* Vertical padding based on viewport height */
+  flex-shrink: 0; /* Prevent header from shrinking */
 }
 
 h1 {
   color: grey;
-  /* padding: 2vh; */
-  height: 15%;
+  /* Responsive font size using clamp() */
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
 }
 
-#infoBox {
-  display: flex;
+/* --- Main Content Area --- */
+main {
+  flex-grow: 1; /* Allow main content to expand and fill available space */
+  display: flex; /* Use Flexbox */
+  flex-direction: column; /* Arrange children (info-box, controls-container) vertically */
+  justify-content: space-around; /* Distribute space between main sections */
+  padding: 1vh 1vw; /* Responsive padding based on viewport dimensions */
   width: 100%;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  justify-content: space-around;
+  margin: 0 auto;
+}
+
+/* --- Info Box --- */
+#info-box {
+  display: flex; /* Use Flexbox for info items */
+  width: 100%;
+  flex-direction: row; /* Arrange info items horizontally */
+  flex-wrap: wrap; /* Allow items to wrap onto multiple lines if needed */
+  justify-content: center; /* Center items horizontally */
   align-items: center;
-  /* margin: 1em; */
-  height: 25%;
-  align-content: center;
+  gap: 1em; /* Space between individual info items */
+  margin-bottom: 2vh;
 }
 
-.ObstacleDetected {
-  display: flex;
-  width: 20%;
-  height: 40%;
-  flex-direction: column;
-  box-shadow: 0px 0 20px 6px black;
-  background: radial-gradient(transparent,red);
-}
-
-
-.CircleBtn {
-  border-radius: 3em;
-  display: flex;
-  flex-direction: column;
-  flex-wrap: nowrap;
-  align-content: center;
-  justify-content: center;
-  align-items: center;
-  border: none;
-  background: linear-gradient(blue,green);
-  box-shadow: 0px 0px 4px 0px black;
-  height: 85%;
-  padding: 1em;
-  width: 25%;
-
-}
-
-.BlockBtn {
+.display-info {
+  background-color: var(--info-disconnected-bg); /* Default background color */
+  padding: 0.5em 1em;
   border-radius: 1em;
-  display: flex;
-  flex-direction: column;
-  flex-wrap: nowrap;
-  align-content: center;
-  justify-content: center;
-  align-items: center;
-  border: none;
-  background-color: var(--displayColor, grey);
-  box-shadow: 0px 0px 8px 2px black;
-  margin: 0.5em;
-  padding: 1em;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(45deg, black, transparent, blue);
+  color: var(--info-text-color);
+  font-size: clamp(0.8rem, 2vw, 1rem);
+  flex-shrink: 0; /* Prevent items from shrinking too much */
 }
 
-.button {
-  transition: all 0.2s ease;
-  color: aqua;
-  /* max-width: 100px; */
-  /* max-height: 100px; */
-}
+/* Styles applied by JS via class names */
+#connection-status.connected { background-color: var(--info-connected-bg); }
+#connection-status.error { background-color: var(--info-error-bg); }
+#battery-status.low { background-color: var(--info-disconnected-bg); } /* Low battery uses disconnected style */
+#battery-status.ok { background-color: var(--info-connected-bg); } /* OK battery uses connected style */
 
-.button.active {
-  transform: scale(0.98);
-  box-shadow: none;
-}
-
-.DisplayInfo {
-  background-color: #c93737;
+.obstacle-indicator {
   padding: 0.5em;
-  border-radius: 1em;
-  color: aqua;
-  margin: 0.1em;
+  box-shadow: var(--obstacle-shadow);
+  background: var(--obstacle-bg);
+  border-radius: 0.5em;
+  color: white;
+  text-align: center;
+}
+.obstacle-indicator svg {
+  display: block;
+  width: 2em; /* Size relative to parent font-size */
+  height: 2em;
+  fill: currentColor; /* SVG color matches text color */
+  margin: 0.5em auto 0;
 }
 
-.container {
-  display: flex;
+/* --- Controls Container (Holds the groups) --- */
+.controls-container {
+  flex-grow: 1; /* Allow controls area to grow and fill space */
+  display: flex; /* Use Flexbox */
+  flex-direction: row; /* Arrange control groups horizontally */
+  align-items: stretch; /* Make groups stretch to the same height */
+  justify-content: space-between; /* Distribute space evenly between groups */
+  gap: 0.5vw; /* Small gap between control groups */
   width: 100%;
-  height: 40%;
-  flex-direction: row;
+  min-height: 0; /* Allows the container to shrink */
+}
+
+/* --- Control Groups (Steering, Extra, Drive) --- */
+.control-group {
+  display: flex; /* Use Flexbox for items within the group */
+  flex-direction: column; /* Arrange items vertically within the group */
+  flex-wrap: nowrap; /* Prevent items inside group from wrapping */
+  align-items: stretch; /* Make items stretch to the same width within the group */
+  justify-content: center; /* Center items vertically within the group */
+  flex-grow: 1; /* Groups share available space */
+  flex-basis: 0; /* Distribute space based on flex-grow */
+  padding: 0.5em;
+  gap: 0.5vw; /* Small gap between items based on viewport width */
+  min-width: 0; /* Allows groups to shrink */
+  align-content: center;
+}
+
+/* Specific styles for the extra controls group */
+.extra-controls{
+  display: flex;
+  flex-wrap: wrap; /* Allow items in this group to wrap */
   align-content: center;
   justify-content: center;
   align-items: center;
-  flex-wrap: nowrap;
+  flex-direction: row-reverse; /* Arrange items in reverse order */
 }
 
-
-
-.moveButtonContainer {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-content: center;
-  align-items: center;
-  justify-content: center;
-  width: 35%;
-  height: 100%;
-  
-}
-
-#stopButton {
-  height: 50%;
-  width: 50%;
-}
-
-.extraButtons {
-  display: flex;
-  flex-direction: row;
-  align-content: flex-start;
-  justify-content: space-between;
-  width: 30%;
-  align-items: center;
-}
-
-.ToggleBtn {
+/* --- Button Styling (General) --- */
+.button {
   border: none;
-  box-shadow: 0px 0px 11px 3px black;
-  background: linear-gradient(132deg, rgb(131 119 119 / 62%), blue);
-}
-
-#steering-wheel {
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  rotate: 0deg;
-  transform: rotate(var(--rotateAngle, 0deg));
-  position: relative;
-  overflow: hidden;
-  cursor: grab;
-}
-
-#steering-wheel:active {
-  cursor: grab;
-}
-
-#backMotorSpeedSet {
-  transform: rotate(-90deg);
-  background: transparent;
-  -webkit-appearance: none;
-  appearance: none;
-  outline: none;
-  box-shadow: none;
-  height: 50%;
-  /* width: 50%; */
-}
-
-#backMotorSpeedSet::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 20px;
-  height: 45px;
-  background: yellow;
-  transform: translateY(-7.5px);
-  border-radius: 25%;
-  appearance: none;
-}
-
-#backMotorSpeedSet::-moz-range-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 20px;
-  height: 20px;
-  background: yellow;
-  transform: translateY(5px);
-  border-radius: 50%;
-  appearance: none;
-}
-
-#backMotorSpeedSet::-ms-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 20px;
-  height: 20px;
-  background: yellow;
-  transform: translateY(5px);
-  border-radius: 50%;
-  appearance: none;
-}
-
-#backMotorSpeedSet::-webkit-slider-runnable-track {
-  height: 30px;
-  appearance: none;
-  box-shadow: inset 0px 0px 6px 5px transparent;
-  background: linear-gradient(90deg, green, blue, red);
-}
-
-#backMotorSpeedSet::-moz-range-track {
-  height: 30px;
-  appearance: none;
-
-  background: linear-gradient(90deg, green, blue, red);
-}
-
-#backMotorSpeedSet::-ms-track {
-  height: 30px;
-  appearance: none;
-  box-shadow: inset 0px 0px 6px 5px transparent;
-  background: linear-gradient(90deg, green, blue, red);
-}
-
-.backMotorSpeedSetContainer {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-content: center;
-  justify-content: center;
+  padding: 0.5em;
+  transition: transform 0.15s ease, box-shadow 0.15s ease; /* Smooth transition for press effect */
+  color: var(--button-text-color);
+  cursor: pointer;
+  touch-action: manipulation; /* Prevent default browser touch actions */
+  -webkit-tap-highlight-color: transparent; /* Remove tap highlight */
+  display: flex; /* Use Flexbox for content inside button */
+  flex-direction: column; /* Arrange text and icon vertically */
   align-items: center;
+  justify-content: center;
+  gap: 0.3em; /* Space between text and icon */
+  font-size: clamp(0.7rem, 1.8vw, 1rem); /* Responsive font size */
+  overflow: hidden;
+  text-align: center;
+  line-height: 1.2;
+  border-radius: 0.8em; /* Default border radius */
+
+  /* Flex properties for buttons as items within control groups */
+  flex-grow: 1;
+  flex-shrink: 1;
+  flex-basis: auto;
+  min-width: 40px; /* Minimum width for buttons */
 }
 
-.ToggleBtn {
-  color: #0F3376;
+.button svg {
+  /* Responsive icon size */
+  width: clamp(1.5em, 3vw, 1.8em);
+  height: clamp(1.5em, 3vw, 1.8em);
+  fill: currentColor;
 }
 
-.ToggleBtn .active {
+/* Style applied when a button is active (pressed) */
+.button:active, .button.active {
+  transform: scale(0.96); /* Slightly scale down when pressed */
+  box-shadow: var(--button-active-shadow);
+}
+
+/* --- Specific Button Types --- */
+.block-btn {
+  background: blue;
+  box-shadow: var(--button-default-shadow);
+  aspect-ratio: 1 / 1; /* Maintain a square aspect ratio */
+}
+
+.circle-btn {
+  border-radius: 50%; /* Make the button round */
+  background: rgb(86, 86, 187);
+  box-shadow: var(--button-circle-shadow);
+  aspect-ratio: 1 / 1; /* Ensure it's circular */
+  color:#5cc472; /* Specific text/icon color for circle buttons */
+}
+
+.toggle-btn {
+    border-radius: 1.5em; /* Pill shape */
+    background: linear-gradient(132deg, rgb(131 119 119 / 62%), blue);
+    box-shadow: var(--button-toggle-shadow);
+    color: #0F3376; /* Default color */
+    padding: 0.4em;
+    height: auto; /* Height determined by content */
+    /* Adjust flex properties to control size within the group */
+    flex-grow: 0;
+    flex-shrink: 0;
+    flex-basis: auto;
+}
+
+.toggle-btn .toggle-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2em;
+}
+.toggle-btn .toggle-state svg {
+    width: 1.5em; /* Size relative to button font size */
+    height: 1.5em;
+}
+
+/* Style for toggle buttons when in the 'on' state (aria-pressed="true") */
+.toggle-btn[aria-pressed="true"] {
+  background: linear-gradient(132deg, rgb(255 255 255 / 62%), blue);
   color: #010d24;
 }
 
-.noDisplay {
-  display: none;
+/* --- Button States (Engine/Lights) --- */
+/* Styles applied based on data- attributes set by JavaScript */
+#engine-button[data-engine-state="on"] {
+  background: linear-gradient(132deg, transparent, blue);
+  box-shadow: inset 0px 1px 13px 2px white; /* Inner shadow effect for 'on' */
+}
+#lights-button[data-light-mode="1"] { background: linear-gradient(blue, transparent); }
+#lights-button[data-light-mode="2"] { background: linear-gradient(blue, red); }
+#lights-button[data-light-mode="3"] { background: linear-gradient(blue, transparent, red); }
+
+/* --- Steering Wheel --- */
+.steering-wheel-container {
+    /* Flex properties for the container within the control group */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1/1;
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: auto;
+    min-width: 40px;
+}
+#steering-wheel {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  /* Apply rotation based on the dynamic CSS variable */
+  transform: rotate(var(--rotate-angle));
+  cursor: grab; /* Cursor changes to indicate draggable */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  background-color: #555;
+}
+#steering-wheel svg {
+  width: 80%;
+  height: 80%;
+  fill: lightgrey;
+}
+#steering-wheel:active {
+  cursor: grabbing; /* Cursor changes while dragging */
+}
+
+/* --- Speed Slider --- */
+.slider-container {
+  display: flex; /* Use Flexbox */
+  flex-direction: row; /* Arrange slider and brake button horizontally */
+  align-items: center;
+  justify-content: center;
+  gap: 0.5vw;
+  /* Flex properties for the container within the control group */
+  flex-grow: 1;
+  flex-shrink: 1;
+  flex-basis: auto;
+  min-width: 80px; /* Minimum space needed */
+}
+
+#speed-slider {
+  transform: rotate(-90deg); /* Rotate the slider vertically */
+  background: transparent;
+  -webkit-appearance: none; /* Hide default browser slider appearance */
+  appearance: none;
+  outline: none;
+  box-shadow: none;
+  cursor: pointer;
+  height: 35px; /* Height after rotation (corresponds to track thickness) */
+  width: 100%; /* Takes full height of parent before rotation */
+  margin: 0 0.5em;
+  /* Flex properties for the slider within its container */
+  flex-grow: 1;
+  flex-basis: 50px;
+  min-width: 30px;
+}
+
+/* Styles for the slider track (the bar) */
+#speed-slider::-webkit-slider-runnable-track { height: 25px; appearance: none; background: var(--slider-track-bg); border-radius: 12.5px; }
+#speed-slider::-moz-range-track { height: 25px; appearance: none; background: var(--slider-track-bg); border-radius: 12.5px; }
+#speed-slider::-ms-track { height: 25px; border-color: transparent; color: transparent; background: var(--slider-track-bg); border-radius: 12.5px; }
+
+/* Styles for the slider thumb (the handle) */
+#speed-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 25px; height: 40px; background: var(--slider-thumb-bg); border-radius: 4px; margin-top: -7.5px; }
+#speed-slider::-moz-range-thumb { appearance: none; width: 25px; height: 40px; background: var(--slider-thumb-bg); border-radius: 4px; border: none; }
+#speed-slider::-ms-thumb { appearance: none; width: 25px; height: 40px; background: var(--slider-thumb-bg); border-radius: 4px; border: none; }
+
+#brake-button {
+  /* Flex properties for the brake button within the slider container */
+  flex-grow: 0;
+  flex-shrink: 0;
+  flex-basis: auto;
+  padding: 0.5em;
+  min-width: 40px;
 }
