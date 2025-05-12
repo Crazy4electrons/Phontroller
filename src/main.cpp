@@ -19,14 +19,14 @@ const uint16_t WEBSOCKET_PORT = 81;
 // --- Pin Definitions ---
 // @brief Analog pin for reading battery voltage.
 const int PIN_BATTERY = A0;
-// @brief Digital pin for the ultrasonic sensor's Trigger pin.
+// @brief Digital pin for the ultrasonic sensors' shared Trigger pin.
 const int PIN_TRIG = D0;
 // @brief Digital pin for the motor driver's Enable pin (used for PWM speed control).
 const int PIN_MOTOR_A_ENABLE = D1;
-// @brief Digital pin for the ultrasonic sensor's Echo pin.
-const int PIN_ECHO = D2;
-// @brief Digital pin for the IR obstacle sensor (assuming input with pullup).
-const int PIN_IR_SENSE = D3;
+// @brief Digital pin for the FRONT ultrasonic sensor's Echo pin.
+const int PIN_ECHO_FRONT = D2;
+// @brief Digital pin for the REAR ultrasonic sensor's Echo pin. (Previously PIN_IR_SENSE)
+const int PIN_ECHO_BACK = D3;
 // @brief Digital pin for the steering servo motor.
 const int PIN_SERVO = D4;
 // @brief Digital pin for controlling the front lights.
@@ -51,6 +51,9 @@ const int SERVO_LEFT_POS = 0;
 const int SERVO_RIGHT_POS = 180;
 // @brief Maximum PWM value for motor speed control (0-255).
 const int MAX_MOTOR_SPEED = 255;
+// @brief Distance threshold in CM for obstacle safety stop.
+const long OBSTACLE_STOP_THRESHOLD_CM = 10;
+
 
 // --- Timing Constants ---
 // @brief Interval in milliseconds for reading sensors and broadcasting status.
@@ -95,8 +98,8 @@ public:
     LightMode currentLightMode = LightMode::OFF;
     bool engineStarted = false;
     int batteryPercent = 0; // Stored as percentage (0-100).
-    bool backObstacleDetected = false;
-    long frontObstacleDistanceCm = -1; // Distance in cm. -1 indicates invalid reading.
+    long frontObstacleDistanceCm = -1; // Front distance in cm. -1 indicates invalid reading.
+    long backObstacleDistanceCm = -1;  // Back distance in cm. -1 indicates invalid reading.
     bool autoLightsEnabled = false; // Tracks if lights are in AUTO mode.
     MotorDirection currentMotorDirection = MotorDirection::OFF;
     int currentMotorSpeed = 0; // Stored as PWM value (0-MAX_MOTOR_SPEED).
@@ -108,8 +111,8 @@ public:
         jsonDoc.clear(); // Clear previous data
         jsonDoc["LightsStatus"] = static_cast<int>(currentLightMode);
         jsonDoc["EngineStatus"] = engineStarted;
-        jsonDoc["BackObstacleDetected"] = backObstacleDetected;
-        jsonDoc["FrontObstacleDetected"] = frontObstacleDistanceCm;
+        jsonDoc["FrontObstacleDistance"] = frontObstacleDistanceCm;
+        jsonDoc["BackObstacleDistance"] = backObstacleDistanceCm;
         jsonDoc["BatteryStatus"] = batteryPercent;
 
         String output;
@@ -142,21 +145,16 @@ unsigned long lastSensorReadMillis = 0;
 // @brief Stores the ID of the last WebSocket client that sent a message.
 uint8_t lastConnectedClientId = 0;
 
-// --- Sensor Reading Functions ---
+// --- Sensor Reading Function (Generic) ---
 
-// @brief Reads the distance from the ultrasonic sensor.
+// @brief Measures distance using an ultrasonic sensor with the shared trigger.
+// @param echoPin The digital pin connected to the sensor's Echo pin.
 // @return Distance in centimeters, or -1 if timeout occurred.
-long readUltrasonicDistance() {
-    // Clears the PIN_TRIG condition
-    digitalWrite(PIN_TRIG, LOW);
-    delayMicroseconds(2);
-    // Sets the PIN_TRIG pin on HIGH state 10 micro seconds
-    digitalWrite(PIN_TRIG, HIGH);
-    delayMicroseconds(10);
-    digitalWrite(PIN_TRIG, LOW);
-    // Reads the PIN_ECHO pin, returns the sound wave travel time in microseconds.
+long measureDistance(int echoPin) {
+    // Trigger pulse is handled once for both sensors in the loop.
+    // Just measure the echo pulse for the specified pin.
     // Set a timeout for pulseIn to prevent blocking if echo is lost.
-    long duration = pulseIn(PIN_ECHO, HIGH, 30000); // 30ms timeout (~5m range)
+    long duration = pulseIn(echoPin, HIGH, 30000); // 30ms timeout (~5m range)
     if (duration == 0) {
         return -1; // Indicate timeout or error
     }
@@ -164,6 +162,7 @@ long readUltrasonicDistance() {
     long distance = duration * 0.034 / 2;
     return distance; // Distance in cm
 }
+
 
 // @brief Reads the battery voltage via the analog pin and voltage divider.
 // @return The calculated battery voltage.
@@ -215,13 +214,13 @@ void setBackMotor(MotorDirection direction, int speed = MAX_MOTOR_SPEED) {
     }
 
     // --- Obstacle safety checks ---
-    // Stop forward motion if front obstacle is too close.
-    if (direction == MotorDirection::FORWARD && myCar.frontObstacleDistanceCm >= 0 && myCar.frontObstacleDistanceCm < 10) {
+    // Stop forward motion if front obstacle is too close (and reading is valid).
+    if (direction == MotorDirection::FORWARD && myCar.frontObstacleDistanceCm >= 0 && myCar.frontObstacleDistanceCm < OBSTACLE_STOP_THRESHOLD_CM) {
        Serial.println("Obstacle detected ahead! Stopping forward motion.");
        direction = MotorDirection::HARD_STOP;
     }
-    // Stop reverse motion if back obstacle is detected.
-    if (direction == MotorDirection::REVERSE && myCar.backObstacleDetected) {
+    // Stop reverse motion if back obstacle is too close (and reading is valid).
+    if (direction == MotorDirection::REVERSE && myCar.backObstacleDistanceCm >= 0 && myCar.backObstacleDistanceCm < OBSTACLE_STOP_THRESHOLD_CM) {
        Serial.println("Obstacle detected behind! Stopping reverse motion.");
        direction = MotorDirection::HARD_STOP;
     }
@@ -289,10 +288,15 @@ void setBackMotor(MotorDirection direction, int speed = MAX_MOTOR_SPEED) {
     // --- Brake Light Logic ---
     // Brake lights are controlled if not in AUTO mode, or if in HARD_STOP.
     if (!myCar.autoLightsEnabled || direction == MotorDirection::HARD_STOP) {
+        long delayTime = millis();
            if (brakeLightsOn) {
                digitalWrite(PIN_BACK_LIGHTS, HIGH);
                // WARNING: Blocking delay for brake light duration.
                 delay(HARD_STOP_BRAKE_LIGHT_MS);
+                if(delayTime + HARD_STOP_BRAKE_LIGHT_MS < millis()) {
+                   // If the delay time has passed, turn off the brake lights.
+                   digitalWrite(PIN_BACK_LIGHTS, LOW);
+                }
                 digitalWrite(PIN_BACK_LIGHTS, LOW);
            } else {
                // If not braking and not in AUTO, turn off back lights unless explicitly in FRONT_AND_BACK mode.
@@ -364,7 +368,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         }
 
         case WStype_TEXT: {
-            // Serial.printf("[%u] Got text: %s\n", num, payload); // Debugging line commented out
             String command = String((char*)payload);
             command.trim();
 
@@ -415,13 +418,11 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
              }
              else {
                  Serial.printf("Unknown command: %s\n", command.c_str());
-                 // Optional: Send an error message back
              }
 
              // Send updated status after processing command (unless it was just a status request or engine toggle, which already sends).
              if (!command.equalsIgnoreCase("status") && !command.equalsIgnoreCase("enginestart")) {
                  String statusPayload = myCar.getStatusJson();
-                 // Send to the specific client that sent the command (or broadcast if preferred)
                  webSocket.sendTXT(num, statusPayload);
              }
             break;
@@ -429,7 +430,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 
         case WStype_BIN:
             Serial.printf("[%u] Got binary length: %u\n", num, length);
-            // hexdump(payload, length); // Debugging line commented out
             break;
 
         default:
@@ -462,9 +462,9 @@ void setup() {
     pinMode(PIN_MOTOR_A_ENABLE, OUTPUT);
     pinMode(PIN_FRONT_LIGHTS, OUTPUT);
     pinMode(PIN_BACK_LIGHTS, OUTPUT);
-    pinMode(PIN_TRIG, OUTPUT);
-    pinMode(PIN_ECHO, INPUT);
-    pinMode(PIN_IR_SENSE, INPUT_PULLUP); // Set IR sensor pin as input with internal pull-up.
+    pinMode(PIN_TRIG, OUTPUT);         // Shared trigger pin for both ultrasonic sensors.
+    pinMode(PIN_ECHO_FRONT, INPUT);    // Front ultrasonic sensor echo pin.
+    pinMode(PIN_ECHO_BACK, INPUT);     // Rear ultrasonic sensor echo pin (was IR_SENSE).
     pinMode(PIN_BATTERY, INPUT);       // Battery sensor pin is analog input.
     steeringServo.attach(PIN_SERVO);     // Attach the Servo object to the servo pin.
 
@@ -522,10 +522,31 @@ void loop() {
     if (currentMillis - lastSensorReadMillis >= SENSOR_READ_INTERVAL_MS) {
         lastSensorReadMillis = currentMillis; // Update the last read time.
 
-        // Read sensors.
-        myCar.frontObstacleDistanceCm = readUltrasonicDistance();
-        // Read IR sensor state (invert logic if LOW means detected).
-        myCar.backObstacleDetected = !digitalRead(PIN_IR_SENSE);
+        // --- Read Ultrasonic Sensors (Shared Trigger) ---
+        // Trigger both sensors simultaneously.
+        digitalWrite(PIN_TRIG, LOW);
+        delayMicroseconds(2);
+        digitalWrite(PIN_TRIG, HIGH);
+        delayMicroseconds(10);
+        digitalWrite(PIN_TRIG, LOW);
+
+        // Read echo from the front sensor.
+        long durationFront = pulseIn(PIN_ECHO_FRONT, HIGH, 30000); // 30ms timeout
+        if (durationFront == 0) {
+            myCar.frontObstacleDistanceCm = -1; // Indicate timeout
+        } else {
+            myCar.frontObstacleDistanceCm = durationFront * 0.034 / 2; // Convert to cm
+        }
+
+        // Read echo from the back sensor.
+        long durationBack = pulseIn(PIN_ECHO_BACK, HIGH, 30000); // 30ms timeout
+        if (durationBack == 0) {
+             myCar.backObstacleDistanceCm = -1; // Indicate timeout
+        } else {
+            myCar.backObstacleDistanceCm = durationBack * 0.034 / 2; // Convert to cm
+        }
+
+        // --- Read Battery Voltage ---
         float voltage = readBatteryVoltage();
         myCar.updateBatteryLevel(voltage); // Update battery percentage state.
 
@@ -533,13 +554,14 @@ void loop() {
         // Stop forward motion if a valid front obstacle reading is below the threshold.
          if (myCar.currentMotorDirection == MotorDirection::FORWARD &&
              myCar.frontObstacleDistanceCm >= 0 &&
-             myCar.frontObstacleDistanceCm < 10) {
+             myCar.frontObstacleDistanceCm < OBSTACLE_STOP_THRESHOLD_CM) {
              Serial.println("LOOP Safety Stop: Obstacle detected ahead!");
              setBackMotor(MotorDirection::HARD_STOP);
          }
-        // Stop backward motion if a back obstacle is detected.
+        // Stop backward motion if a valid back obstacle reading is below the threshold.
          if (myCar.currentMotorDirection == MotorDirection::REVERSE &&
-             myCar.backObstacleDetected) {
+             myCar.backObstacleDistanceCm >= 0 &&
+             myCar.backObstacleDistanceCm < OBSTACLE_STOP_THRESHOLD_CM) {
              Serial.println("LOOP Safety Stop: Obstacle detected behind!");
               setBackMotor(MotorDirection::HARD_STOP);
          }
@@ -549,8 +571,7 @@ void loop() {
         webSocket.broadcastTXT(statusPayload);
 
          // Optional: Print status to Serial for monitoring.
-        //  Serial.print("Status Sent: "); Serial.println(statusPayload); // Debugging line commented out
-        //  Serial.printf(" Batt V: %.2f, Front Dist: %ld cm, Back IR: %d\n", voltage, myCar.frontObstacleDistanceCm, myCar.backObstacleDetected); // Debugging line commented out
+        Serial.printf(" Batt V: %.2f, Front Dist: %ld cm, Back Dist: %ld cm\n", voltage, myCar.frontObstacleDistanceCm, myCar.backObstacleDistanceCm);
     }
 
     // Other non-blocking tasks can go here.
