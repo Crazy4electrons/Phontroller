@@ -17,26 +17,48 @@ const uint16_t WEBSERVER_PORT = 80;
 const uint16_t WEBSOCKET_PORT = 81;
 
 // --- Pin Definitions ---
+// Important Note on ESP8266 Pin States at Boot:
+// - Pins pulled HIGH at boot: D0 (GPIO16), D3 (GPIO0), D4 (GPIO2), D5 (GPIO14), D6 (GPIO12), D7 (GPIO13), TX (GPIO1), RX (GPIO3)
+// - Pins pulled LOW at boot: D8 (GPIO15)
+// - Pins generally "safe"/floating at boot: D1 (GPIO5), D2 (GPIO4)
+// When assigning output pins, consider their boot state to avoid unintended activation.
+// For inputs, ensure strapping pins (GPIO0, GPIO2, GPIO15) are in their required boot state.
+
 // @brief Analog pin for reading battery voltage.
 const int PIN_BATTERY = A0;
-// @brief Digital pin for the ultrasonic sensors' shared Trigger pin.
-const int PIN_TRIG = D0;
-// @brief Digital pin for the motor driver's Enable pin (used for PWM speed control).
-const int PIN_MOTOR_A_ENABLE = D1;
+
+// --- Input Pins (Chosen for safe/high at boot behavior) ---
 // @brief Digital pin for the FRONT ultrasonic sensor's Echo pin.
+// D2 (GPIO4) is generally safe at boot.
 const int PIN_ECHO_FRONT = D2;
-// @brief Digital pin for the REAR ultrasonic sensor's Echo pin. (Previously PIN_IR_SENSE)
-const int PIN_ECHO_BACK = D3;
-// @brief Digital pin for the steering servo motor.
-const int PIN_SERVO = D4;
+// @brief Digital pin for the REAR ultrasonic sensor's Echo pin.
+// D3 (GPIO0) is HIGH at boot, required for normal operation. Ensure external circuit does not pull it LOW at power-up/reset.
+const int PIN_ECHO_BACK = D1;
+
+// --- Output Pins (Arranged to minimize interference) ---
+// @brief Digital pin for the motor driver's Enable pin (used for PWM speed control).
+// D1 (GPIO5) is generally safe at boot, excellent for motor enable (can be held LOW).
+const int PIN_MOTOR_A_ENABLE = D3;
 // @brief Digital pin for controlling the front lights.
+// D8 (GPIO15) is LOW at boot, critical for normal boot. Ideal for outputs that should start OFF.
 const int PIN_FRONT_LIGHTS = D8;
+
+// @brief Digital pin for the ultrasonic sensors' shared Trigger pin.
+// D0 (GPIO16) is HIGH at boot. As a trigger, a brief HIGH pulse is usually harmless.
+const int PIN_TRIG = D0;
+// @brief Digital pin for the steering servo motor.
+// D4 (GPIO2) is HIGH at boot, has onboard LED. Servo might twitch slightly at startup.
+const int PIN_SERVO = D4;
+// @brief Digital pin for controlling the back lights.
+// D5 (GPIO14) is HIGH at boot. Back lights might briefly flash at startup.
+const int PIN_BACK_LIGHTS = D5;
 // @brief Digital pin for Motor A input 1 (part of H-bridge for direction control).
+// D7 (GPIO13) is HIGH at boot. Motor direction pins. Motor will be OFF because ENABLE (D1) is LOW.
 const int PIN_MOTOR_A1 = D7;
 // @brief Digital pin for Motor A input 2 (part of H-bridge for direction control).
+// D6 (GPIO12) is HIGH at boot. Motor direction pins. Motor will be OFF because ENABLE (D1) is LOW.
 const int PIN_MOTOR_A2 = D6;
-// @brief Digital pin for controlling the back lights.
-const int PIN_BACK_LIGHTS = D5;
+
 
 // --- Hardware Configuration ---
 // @brief Resistance of the first resistor in the battery voltage divider (Ohms).
@@ -50,7 +72,7 @@ const int SERVO_LEFT_POS = 0;
 // @brief Servo position for full right steering (degrees).
 const int SERVO_RIGHT_POS = 180;
 // @brief Maximum PWM value for motor speed control (0-255).
-const int MAX_MOTOR_SPEED = 255;
+const int MAX_MOTOR_SPEED = 0;
 // @brief Distance threshold in CM for obstacle safety stop.
 const long OBSTACLE_STOP_THRESHOLD_CM = 10;
 
@@ -145,25 +167,6 @@ unsigned long lastSensorReadMillis = 0;
 // @brief Stores the ID of the last WebSocket client that sent a message.
 uint8_t lastConnectedClientId = 0;
 
-// --- Sensor Reading Function (Generic) ---
-
-// @brief Measures distance using an ultrasonic sensor with the shared trigger.
-// @param echoPin The digital pin connected to the sensor's Echo pin.
-// @return Distance in centimeters, or -1 if timeout occurred.
-long measureDistance(int echoPin) {
-    // Trigger pulse is handled once for both sensors in the loop.
-    // Just measure the echo pulse for the specified pin.
-    // Set a timeout for pulseIn to prevent blocking if echo is lost.
-    long duration = pulseIn(echoPin, HIGH, 30000); // 30ms timeout (~5m range)
-    if (duration == 0) {
-        return -1; // Indicate timeout or error
-    }
-    // Calculating the distance: Speed of sound is ~0.034 cm/us. Distance = (duration * speed) / 2.
-    long distance = duration * 0.034 / 2;
-    return distance; // Distance in cm
-}
-
-
 // @brief Reads the battery voltage via the analog pin and voltage divider.
 // @return The calculated battery voltage.
 float readBatteryVoltage() {
@@ -227,7 +230,7 @@ void setBackMotor(MotorDirection direction, int speed = MAX_MOTOR_SPEED) {
 
     MotorDirection previousDirection = myCar.currentMotorDirection; // Store previous direction for HARD_STOP logic.
     myCar.currentMotorDirection = direction;
-    myCar.currentMotorSpeed = (direction == MotorDirection::OFF || direction == MotorDirection::HARD_STOP) ? 0 : speed;
+    myCar.currentMotorSpeed = (direction == MotorDirection::OFF || direction == MotorDirection::HARD_STOP) ? 255 : map(speed, 0,255, 255,0);
 
     // --- Motor Driver Pin Control ---
     bool brakeLightsOn = false;
@@ -288,15 +291,10 @@ void setBackMotor(MotorDirection direction, int speed = MAX_MOTOR_SPEED) {
     // --- Brake Light Logic ---
     // Brake lights are controlled if not in AUTO mode, or if in HARD_STOP.
     if (!myCar.autoLightsEnabled || direction == MotorDirection::HARD_STOP) {
-        long delayTime = millis();
            if (brakeLightsOn) {
                digitalWrite(PIN_BACK_LIGHTS, HIGH);
                // WARNING: Blocking delay for brake light duration.
                 delay(HARD_STOP_BRAKE_LIGHT_MS);
-                if(delayTime + HARD_STOP_BRAKE_LIGHT_MS < millis()) {
-                   // If the delay time has passed, turn off the brake lights.
-                   digitalWrite(PIN_BACK_LIGHTS, LOW);
-                }
                 digitalWrite(PIN_BACK_LIGHTS, LOW);
            } else {
                // If not braking and not in AUTO, turn off back lights unless explicitly in FRONT_AND_BACK mode.
@@ -457,20 +455,35 @@ void setup() {
      }
 
     // --- Initialize Pins ---
+    // Outputs
     pinMode(PIN_MOTOR_A1, OUTPUT);
     pinMode(PIN_MOTOR_A2, OUTPUT);
     pinMode(PIN_MOTOR_A_ENABLE, OUTPUT);
     pinMode(PIN_FRONT_LIGHTS, OUTPUT);
     pinMode(PIN_BACK_LIGHTS, OUTPUT);
-    pinMode(PIN_TRIG, OUTPUT);         // Shared trigger pin for both ultrasonic sensors.
-    pinMode(PIN_ECHO_FRONT, INPUT);    // Front ultrasonic sensor echo pin.
-    pinMode(PIN_ECHO_BACK, INPUT);     // Rear ultrasonic sensor echo pin (was IR_SENSE).
+    pinMode(PIN_TRIG, OUTPUT);
+    // Inputs
+    pinMode(PIN_ECHO_FRONT, INPUT);
+    pinMode(PIN_ECHO_BACK, INPUT);
     pinMode(PIN_BATTERY, INPUT);       // Battery sensor pin is analog input.
+
     steeringServo.attach(PIN_SERVO);     // Attach the Servo object to the servo pin.
 
     // --- Initial State ---
-    stopAllMotors(); // Set motors off and servo to center initially.
+    // Explicitly set all output pins to a safe, OFF state immediately after pinMode.
+    // This overrides any brief high states from boot where possible.
+    digitalWrite(PIN_MOTOR_A1, LOW);
+    digitalWrite(PIN_MOTOR_A2, LOW);
+    analogWrite(PIN_MOTOR_A_ENABLE, 0); // PWM to 0 (LOW)
+    digitalWrite(PIN_FRONT_LIGHTS, LOW);
+    digitalWrite(PIN_BACK_LIGHTS, LOW);
+    digitalWrite(PIN_TRIG, LOW);
+    setSteering(SERVO_CENTER_POS); // Set servo to center immediately
+
+    // Now call the higher-level functions to set car state
+    stopAllMotors(); // Ensure motors are off and servo centered.
     setLights(LightMode::OFF); // Start with lights off.
+
 
     // --- Wi-Fi Access Point Setup ---
     Serial.printf("Setting up AP: %s\n", WIFI_SSID);
