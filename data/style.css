@@ -144,7 +144,7 @@ main {
 
 /* --- Controls Container (Holds the groups) --- */
 .controls-container {
-  flex-grow: 1; /* Allow controls area to grow and fill space */
+  /* flex-grow: 1; Allow controls area to grow and fill space */
   display: flex; /* Use Flexbox */
   flex-direction: row; /* Arrange control groups horizontally */
   align-items: stretch; /* Make groups stretch to the same height */
@@ -157,7 +157,7 @@ main {
 /* --- Control Groups (Steering, Extra, Drive) --- */
 .control-group {
   display: flex; /* Use Flexbox for items within the group */
-  flex-direction: column; /* Arrange items vertically within the group */
+  flex-direction: row; /* Arrange items vertically within the group */
   flex-wrap: nowrap; /* Prevent items inside group from wrapping */
   align-items: stretch; /* Make items stretch to the same width within the group */
   justify-content: center; /* Center items vertically within the group */
@@ -176,7 +176,7 @@ main {
   align-content: center;
   justify-content: center;
   align-items: center;
-  flex-direction: row-reverse; /* Arrange items in reverse order */
+  flex-direction: row; /* Arrange items in reverse order */
 }
 
 /* --- Button Styling (General) --- */

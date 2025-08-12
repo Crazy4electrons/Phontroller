@@ -72,9 +72,9 @@ const int SERVO_LEFT_POS = 0;
 // @brief Servo position for full right steering (degrees).
 const int SERVO_RIGHT_POS = 180;
 // @brief Maximum PWM value for motor speed control (0-255).
-const int MAX_MOTOR_SPEED = 0;
+const int MAX_MOTOR_SPEED = 255;
 // @brief Distance threshold in CM for obstacle safety stop.
-const long OBSTACLE_STOP_THRESHOLD_CM = 10;
+const long OBSTACLE_STOP_THRESHOLD_CM = 15;
 
 
 // --- Timing Constants ---
@@ -348,6 +348,7 @@ void toggleEngine() {
 // @param length The length of the payload.
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length) {
     lastConnectedClientId = num; // Store the most recent client ID
+    // Log the event type for debugging.
 
     switch (type) {
         case WStype_DISCONNECTED:
@@ -368,6 +369,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         case WStype_TEXT: {
             String command = String((char*)payload);
             command.trim();
+            Serial.printf("[%u] Received command: %s\n", num, command.c_str());
 
             // --- Command Parsing ---
             if (command.equalsIgnoreCase("enginestart")) {
@@ -521,7 +523,7 @@ void setup() {
     }
      Serial.println("Ready.");
 }
-
+bool sensirswitch = false; // Flag to track if sensors are switched
 // --- Main Loop ---
 // @brief The main program loop, continuously handling WebSocket traffic and periodic tasks.
 void loop() {
@@ -544,13 +546,9 @@ void loop() {
         digitalWrite(PIN_TRIG, LOW);
 
         // Read echo from the front sensor.
-        long durationFront = pulseIn(PIN_ECHO_FRONT, HIGH, 30000); // 30ms timeout
-        if (durationFront == 0) {
-            myCar.frontObstacleDistanceCm = -1; // Indicate timeout
-        } else {
-            myCar.frontObstacleDistanceCm = durationFront * 0.034 / 2; // Convert to cm
-        }
-
+        if(sensirswitch) {
+  
+            sensirswitch = !sensirswitch;
         // Read echo from the back sensor.
         long durationBack = pulseIn(PIN_ECHO_BACK, HIGH, 30000); // 30ms timeout
         if (durationBack == 0) {
@@ -558,7 +556,15 @@ void loop() {
         } else {
             myCar.backObstacleDistanceCm = durationBack * 0.034 / 2; // Convert to cm
         }
-
+        }else{
+                      sensirswitch = !sensirswitch;
+        long durationFront = pulseIn(PIN_ECHO_FRONT, HIGH, 30000); // 30ms timeout
+        if (durationFront == 0) {
+            myCar.frontObstacleDistanceCm = -1; // Indicate timeout
+        } else {
+            myCar.frontObstacleDistanceCm = durationFront * 0.034 / 2; // Convert to cm
+        }
+        }
         // --- Read Battery Voltage ---
         float voltage = readBatteryVoltage();
         myCar.updateBatteryLevel(voltage); // Update battery percentage state.
